@@ -4,21 +4,21 @@ import os
 import datetime
 from typing import List, Tuple, Optional
 
-# 常量定义
+# Constant definitions
 SAMPLE_RATE = 44100
-SAMPLE_WIDTH = 2  # 16位 = 2字节
+SAMPLE_WIDTH = 2  # 16-bit = 2 bytes
 CHANNELS = 1
-SILENCE_DURATION = 0.05  # 0.05秒静音间隔
-CROSS_FADE_VOWEL = 0.01  # 元音间交叉淡化时间（秒）
-CONSONANT_OVERLAP_PERCENT = 0.55  # 辅音55%处开始元音
-END_CONSONANT_FADE_PERCENT = 0.3  # 特殊结尾辅音交叉淡化比例（元音时长的30%）
-END_CONSONANT_RETAIN_PERCENT = 0.1  # 普通结尾辅音保留比例（10%）
+SILENCE_DURATION = 0.05  # 0.05 seconds silence interval
+CROSS_FADE_VOWEL = 0.01  # Cross-fade time between vowels (seconds)
+CONSONANT_OVERLAP_PERCENT = 0.55  # Vowel starts at 55% of consonant
+END_CONSONANT_FADE_PERCENT = 0.3  # Cross-fade ratio for special ending consonants (30% of vowel duration)
+END_CONSONANT_RETAIN_PERCENT = 0.1  # Retention ratio for regular ending consonants (10%)
 
-# 辅音列表（更新以包含新增辅音）
+# Consonant list (updated to include new consonants)
 CONSONANTS = ['b', 'ch', 'd', 'th', 'f', 'g', 'h', 'j', 'dr', 'k', 'l', 'm', 'n', 'ng', 'p', 'r', 's', 'sh', 't', 'v', 'w', 'y', 'z',
               'zh', 'str', 'spl', 'skr', 'tw', 'dw', 'thr', 'fr', 'pr', 'br', 'kr', 'gr', 'fl', 'bl', 'kl', 'gl', 'sw', 'sp', 'st', 'sk']
 
-# 元音映射表
+# Vowel mapping table
 VOWEL_MAPPING = {
     'ae': 'a',
     'aa': 'a',
@@ -33,7 +33,7 @@ VOWEL_MAPPING = {
 }
 
 def parse_mapping(mapping_str: str) -> List[List[str]]:
-    """解析映射字符串为音节列表，每个音节是组件列表"""
+    """Parse mapping string into syllable list, each syllable is a list of components"""
     syllables = []
     syllable_strs = mapping_str.split('_')
     
@@ -41,19 +41,19 @@ def parse_mapping(mapping_str: str) -> List[List[str]]:
         components = syl.split('-')
         new_components = []
         
-        # 处理每个组件
+        # Process each component
         for i, comp in enumerate(components):
-            # 开头辅音（第一个组件且在辅音列表中）
+            # Initial consonant (first component and in consonant list)
             if i == 0 and comp in CONSONANTS:
-                new_components.append(comp + '-')  # 添加横杠
-            # 结尾辅音（最后一个组件且在辅音列表中）
+                new_components.append(comp + '-')  # Add dash
+            # Ending consonant (last component and in consonant list)
             elif i == len(components) - 1 and comp in CONSONANTS:
-                # 特殊处理n和ng
+                # Special handling for n and ng
                 if comp in ['n', 'ng']:
                     new_components.append(comp)
                 else:
                     new_components.append(comp + '-')
-            # 元音或复合元音
+            # Vowel or compound vowel
             else:
                 new_components.append(comp)
         
@@ -62,8 +62,8 @@ def parse_mapping(mapping_str: str) -> List[List[str]]:
     return syllables
 
 def component_to_path(component: str, consonant_dirs: List[str], vowel_dir: str) -> str:
-    """将音素组件转换为完整文件路径"""
-    # 特殊处理hh音素，始终使用h-.wav
+    """Convert phoneme component to complete file path"""
+    # Special handling for hh phoneme, always use h-.wav
     if component == 'hh' or component == 'hh-':
         for consonant_dir in consonant_dirs:
             path = os.path.join(consonant_dir, "h-.wav")
@@ -72,7 +72,7 @@ def component_to_path(component: str, consonant_dirs: List[str], vowel_dir: str)
         return os.path.join(consonant_dirs[0], "h-.wav")
     
     if component.endswith('-'):
-        # 标准辅音（如b- → b-.wav）
+        # Standard consonant (e.g., b- → b-.wav)
         consonant = component[:-1]
         for consonant_dir in consonant_dirs:
             path = os.path.join(consonant_dir, f"{consonant}-.wav")
@@ -80,128 +80,128 @@ def component_to_path(component: str, consonant_dirs: List[str], vowel_dir: str)
                 return path
         return os.path.join(consonant_dirs[0], f"{consonant}-.wav")
     elif component in ('n', 'ng'):
-        # 特殊结尾辅音（如n → -n.wav）
+        # Special ending consonant (e.g., n → -n.wav)
         for consonant_dir in consonant_dirs:
             path = os.path.join(consonant_dir, f"-{component}.wav")
             if os.path.exists(path):
                 return path
         return os.path.join(consonant_dirs[0], f"-{component}.wav")
     else:
-        # 元音或复合元音（如ae → a.wav）
-        # 使用映射表转换元音名称
+        # Vowel or compound vowel (e.g., ae → a.wav)
+        # Use mapping table to convert vowel name
         vowel_name = VOWEL_MAPPING.get(component, component)
         return os.path.join(vowel_dir, f"{vowel_name}.wav")
 
 def read_wav(file_path: str) -> Tuple[Optional[list], Optional[str]]:
-    """读取WAV文件并验证参数，返回音频数据和错误信息"""
+    """Read WAV file and verify parameters, return audio data and error message"""
     try:
         with wave.open(file_path, 'rb') as wf:
-            # 验证参数
+            # Verify parameters
             if wf.getnchannels() != CHANNELS:
-                return None, f"非单声道（当前{wf.getnchannels()}声道）"
+                return None, f"Not mono (current {wf.getnchannels()} channels)"
             if wf.getsampwidth() != SAMPLE_WIDTH:
-                return None, f"非16位（当前{wf.getsampwidth()}字节）"
+                return None, f"Not 16-bit (current {wf.getsampwidth()} bytes)"
             if wf.getframerate() != SAMPLE_RATE:
-                return None, f"采样率错误（当前{wf.getframerate()}Hz）"
+                return None, f"Sample rate error (current {wf.getframerate()}Hz)"
             
-            # 读取音频数据并转换为整数列表
+            # Read audio data and convert to integer list
             nframes = wf.getnframes()
             data_bytes = wf.readframes(nframes)
-            # 16位PCM小端格式
+            # 16-bit PCM little-endian format
             data = list(struct.unpack(f"<{nframes}h", data_bytes))
             return data, None
             
     except Exception as e:
-        return None, f"读取失败: {str(e)}"
+        return None, f"Read failed: {str(e)}"
 
 def write_wav(file_path: str, data: list) -> Optional[str]:
-    """将音频数据写入WAV文件，返回错误信息"""
+    """Write audio data to WAV file, return error message"""
     try:
         with wave.open(file_path, 'wb') as wf:
             wf.setnchannels(CHANNELS)
             wf.setsampwidth(SAMPLE_WIDTH)
             wf.setframerate(SAMPLE_RATE)
             wf.setnframes(len(data))
-            # 将整数列表转换为字节数据
+            # Convert integer list to byte data
             wf.writeframes(struct.pack(f"<{len(data)}h", *data))
         return None
     except Exception as e:
-        return f"写入失败: {str(e)}"
+        return f"Write failed: {str(e)}"
 
 def generate_silence(duration: float) -> list:
-    """生成指定时长的静音数据"""
+    """Generate silence data of specified duration"""
     samples = int(duration * SAMPLE_RATE)
     return [0] * samples
 
 def cross_fade(data1: list, data2: list, fade_samples: int) -> list:
-    """交叉淡化两个音频数据"""
+    """Cross-fade two audio data segments"""
     if fade_samples <= 0:
         return data1 + data2
     
-    # 确保淡化长度不超过任一音频长度
+    # Ensure fade length doesn't exceed either audio length
     fade_len = min(fade_samples, len(data1), len(data2))
     
-    # 计算淡入淡出系数
+    # Calculate fade in/out coefficients
     fade_out = [1.0 - i / fade_len for i in range(fade_len)]  # 1.0 → 0.0
     fade_in = [i / fade_len for i in range(fade_len)]          # 0.0 → 1.0
     
-    # 混合重叠部分
+    # Mix overlapping part
     mixed = []
     for i in range(fade_len):
-        # 线性交叉淡化
+        # Linear cross-fade
         sample = int(data1[-(fade_len - i)] * fade_out[i] + 
                      data2[i] * fade_in[i])
-        # 限制在16位范围内
+        # Clamp to 16-bit range
         if sample > 32767: sample = 32767
         elif sample < -32768: sample = -32768
         mixed.append(sample)
     
-    # 拼接结果：data1的非重叠部分 + 混合部分 + data2的非重叠部分
+    # Combine results: data1 non-overlapping part + mixed part + data2 non-overlapping part
     return data1[:-fade_len] + mixed + data2[fade_len:]
 
 def process_syllable(syllable: List[str], consonant_dirs: List[str], vowel_dir: str) -> Tuple[Optional[list], Optional[str]]:
-    """处理单个音节的拼接，返回音频数据和错误信息"""
-    # 获取所有组件的文件路径
+    """Process single syllable concatenation, return audio data and error message"""
+    # Get file paths for all components
     file_paths = [component_to_path(comp, consonant_dirs, vowel_dir) for comp in syllable]
     
-    # 读取所有音频文件
+    # Read all audio files
     audio_data = []
     for path in file_paths:
         data, error = read_wav(path)
         if error:
-            return None, f"文件 {os.path.basename(path)}: {error}"
+            return None, f"File {os.path.basename(path)}: {error}"
         audio_data.append(data)
     
-    # 根据组件数量处理不同类型的音节
-    if len(syllable) == 1:  # 纯元音
+    # Process different syllable types based on component count
+    if len(syllable) == 1:  # Pure vowel
         return audio_data[0], None
     
-    elif len(syllable) == 2:  # 辅音+元音结构
+    elif len(syllable) == 2:  # Consonant + vowel structure
         consonant, vowel = audio_data
         
-        # 计算辅音55%位置
+        # Calculate 55% position of consonant
         overlap_start = int(len(consonant) * CONSONANT_OVERLAP_PERCENT)
         
-        # 计算重叠部分长度（取辅音剩余长度和元音长度的最小值）
+        # Calculate overlap length (minimum of remaining consonant length and vowel length)
         overlap_len = min(len(consonant) - overlap_start, len(vowel))
         
-        # 分割音频
+        # Split audio
         consonant_before = consonant[:overlap_start]
         consonant_overlap = consonant[overlap_start:overlap_start+overlap_len]
         vowel_overlap = vowel[:overlap_len]
         vowel_after = vowel[overlap_len:]
         
-        # 交叉淡化重叠部分
+        # Cross-fade overlapping part
         faded = cross_fade(consonant_overlap, vowel_overlap, overlap_len)
         
-        # 拼接结果
+        # Combine results
         return consonant_before + faded + vowel_after, None
     
-    elif len(syllable) == 3:  # 辅音+元音+辅音结构
+    elif len(syllable) == 3:  # Consonant + vowel + consonant structure
         consonant1, vowel, consonant2 = audio_data
-        is_special_end = syllable[2] in ['n', 'ng']  # 检查是否为特殊结尾
+        is_special_end = syllable[2] in ['n', 'ng']  # Check if special ending
         
-        # 处理第一部分：辅音1 + 元音
+        # Process first part: consonant1 + vowel
         overlap_start = int(len(consonant1) * CONSONANT_OVERLAP_PERCENT)
         overlap_len1 = min(len(consonant1) - overlap_start, len(vowel))
         
@@ -213,47 +213,47 @@ def process_syllable(syllable: List[str], consonant_dirs: List[str], vowel_dir: 
         faded1 = cross_fade(consonant1_overlap, vowel_overlap1, overlap_len1)
         mid_data = consonant1_before + faded1 + vowel_after1
         
-        # 处理第二部分：元音 + 辅音2
+        # Process second part: vowel + consonant2
         if is_special_end:
-            # 特殊结尾（n/ng）：使用元音时长的30%进行交叉淡化
+            # Special ending (n/ng): use 30% of vowel duration for cross-fade
             fade_len = int(len(vowel) * END_CONSONANT_FADE_PERCENT)
             fade_len = min(fade_len, len(mid_data), len(consonant2))
             
-            # 分割音频
+            # Split audio
             mid_end = mid_data[-fade_len:]
             mid_before = mid_data[:-fade_len]
             consonant2_fade = consonant2[:fade_len]
             
-            # 交叉淡化
+            # Cross-fade
             faded_end = cross_fade(mid_end, consonant2_fade, fade_len)
             return mid_before + faded_end, None
         else:
-            # 普通结尾：辅音2前90%与元音交叉淡化，保留最后10%
+            # Regular ending: cross-fade first 90% of consonant2 with vowel, retain last 10%
             fade_len = int(len(vowel) * END_CONSONANT_FADE_PERCENT)
             fade_len = min(fade_len, len(mid_data), int(len(consonant2) * 0.9))
             
-            # 分割音频
+            # Split audio
             mid_end = mid_data[-fade_len:]
             mid_before = mid_data[:-fade_len]
             consonant2_fade = consonant2[:fade_len]
             consonant2_after = consonant2[fade_len:]
             
-            # 交叉淡化
+            # Cross-fade
             faded_end = cross_fade(mid_end, consonant2_fade, fade_len)
             return mid_before + faded_end + consonant2_after, None
     
-    return None, f"不支持的组件数量: {len(syllable)}"
+    return None, f"Unsupported component count: {len(syllable)}"
 
 def main():
-    # 路径配置（更新以包含新增的辅音目录）
+    # Path configuration (updated to include new consonant directories)
     consonant_dirs = [
-        r"E:\桌面\Nonbio\STEMguys\Standard_English\NewStandardC",
-        r"E:\桌面\Nonbio\STEMguys\Standard_English\addC"
+        r"this\is\StandardC",
+        r"this\is\addC"
     ]
-    vowel_dir = r"E:\桌面\Nonbio\STEMguys\Standard_English\vowels"
-    output_dir = r"E:\桌面\Nonbio\STEMguys\Standard_English\output_test"
+    vowel_dir = r"this\is\vowels"
+    output_dir = r"this\is\output_test"
     
-    # 录音表映射关系（更新以包含新的音节组合）
+    # Recording table mapping relationships (updated to include new syllable combinations)
     mapping_table = [
         "aa-iy-aa-uw-aa-eh → a_i_a_u_a_e",
         "eh-aa-ow-aa-ay-iy → e_a_ou_a_ai_i",
@@ -314,7 +314,7 @@ def main():
         "wae-wao-wih-wuh-waw-wey-woyw → w-e_w-o_w-i_w-a_w-o_w-ei_w-oi-w",
         "yae-yao-yih-yuh-yaw-yey-yoyy → y-e_y-o_y-i_y-a_y-o_y-ei_y-oi-y",
         "zae-zao-zih-zuh-zaw-zey-zoyz → z-e_z-o_z-i_z-a_z-o_z-ei_z-oi-z",
-        # 新增的音节组合
+        # New syllable combinations
         "thae-thao-thih-thuh-thaw-they-thoyth → th-e_th-o_th-i_th-a_th-o_th-ei_th-oi-th",
         "zhae-zhao-zhih-zhuh-zhaw-zhey-zhoyzh → zh-e_zh-o_zh-i_zh-a_zh-o_zh-ei_zh-oi-zh",
         "thah-thax-ther-thahth-thaxth-therth → th-a_th-ax_th-er_th-a-th_th-ax-th_th-er-th",
@@ -364,7 +364,7 @@ def main():
         "nah-nax-ner-nahn-naxn-ner → n-a_n-ax_n-er_n-a-n_n-ax-n_n-er-n",
         "ngah-ngao-ngih-nguh-ngaw-ngey-ngoyng → ng-a_ng-o_ng-i_ng-a_ng-o_ng-ei_ng-oi-ng",
         "ngah-ngax-nger-ngahng-ngaxng-ngerng → ng-a_ng-ax_ng-er_ng-a-ng_ng-ax-ng_ng-er-ng",
-        # 新增的录音表
+        # New recording tables
         "ae-aa-ae-iy-ae-uw-ae → ae_aa_ae_iy_ae_uw_ae",
         "ae-eh-ae-ow-ae-ay-ae → ae_eh_ae_ow_ae_ay_ae",
         "iy-aa-iy-eh-iy-ow-iy → iy_aa_iy_eh_iy_ow_iy",
@@ -398,65 +398,65 @@ def main():
         "shey-shoy-shaa-shiy-shuw-shey → sh-ey_sh-oy_sh-aa_sh-iy_sh-uw_sh-ey"
     ]
 
-    # 创建输出目录
+    # Create output directory
     os.makedirs(output_dir, exist_ok=True)
     error_reports = []
     silence = generate_silence(SILENCE_DURATION)
 
-    # 处理每条录音
+    # Process each recording
     for line in mapping_table:
         try:
-            # 解析目标名称和映射字符串
+            # Parse target name and mapping string
             parts = line.split('→')
             if len(parts) != 2:
-                raise ValueError(f"无效的映射行: {line}")
+                raise ValueError(f"Invalid mapping line: {line}")
             
             target_name = parts[0].strip()
             mapping_str = parts[1].strip()
             
-            # 解析音素组件为音节列表
+            # Parse phoneme components into syllable list
             syllables = parse_mapping(mapping_str)
             
-            # 处理每个音节
+            # Process each syllable
             syllable_audio = []
             for syllable in syllables:
                 audio, error = process_syllable(syllable, consonant_dirs, vowel_dir)
                 if error:
-                    raise RuntimeError(f"音节处理失败: {'-'.join(syllable)}: {error}")
+                    raise RuntimeError(f"Syllable processing failed: {'-'.join(syllable)}: {error}")
                 syllable_audio.append(audio)
             
-            # 拼接所有音节（添加静音间隔）
+            # Concatenate all syllables (add silence intervals)
             full_audio = []
             for i, audio in enumerate(syllable_audio):
                 full_audio.extend(audio)
                 if i < len(syllable_audio) - 1:
                     full_audio.extend(silence)
             
-            # 生成输出路径
+            # Generate output path
             output_path = os.path.join(output_dir, f"{target_name}.wav")
             
-            # 保存结果
+            # Save result
             error = write_wav(output_path, full_audio)
             if error:
-                raise RuntimeError(f"保存失败: {error}")
+                raise RuntimeError(f"Save failed: {error}")
             
-            print(f"成功生成: {target_name}.wav")
+            print(f"Successfully generated: {target_name}.wav")
                 
         except Exception as e:
             timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            error_reports.append(f"[{timestamp}] 处理失败: {line}\n错误信息: {str(e)}\n")
-            print(f"错误: {line} - {str(e)}")
+            error_reports.append(f"[{timestamp}] Processing failed: {line}\nError message: {str(e)}\n")
+            print(f"Error: {line} - {str(e)}")
 
-    # 写入错误报告
+    # Write error report
     if error_reports:
         report_path = os.path.join(output_dir, "error_report.txt")
         with open(report_path, 'w', encoding='utf-8') as f:
-            f.write(f"音频处理错误报告（生成时间：{datetime.datetime.now()}）\n")
+            f.write(f"Audio Processing Error Report (Generated: {datetime.datetime.now()})\n")
             f.write("="*50 + "\n")
             f.write("\n".join(error_reports))
-        print(f"错误报告已保存至: {report_path}")
+        print(f"Error report saved to: {report_path}")
     else:
-        print("所有音频处理完成，无错误")
+        print("All audio processing completed, no errors")
 
 if __name__ == "__main__":
     main()

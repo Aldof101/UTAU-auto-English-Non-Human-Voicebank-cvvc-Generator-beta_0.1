@@ -16,7 +16,7 @@ Download link for the formant filter plugin mentioned below: https://kilohearts.
 
 Regarding the combinations mentioned below: In your Digital Audio Workstation (DAW), create a new multitrack file. Use the default linear or cosine crossfade to splice two audio clips together on the same track for combination.
 
-In the "vowels" folder, 5 are the Japanese vowels: a.wav, i.wav, u.wav, e.wav, o.wav. The remaining ones are: ai.wav (pronounced /aɪ/, combine a.wav and i.wav), ax.wav (pronounced /ə/, obtained by adjusting the formants of o.wav using the plugin), ei.wav (pronounced /eɪ/, combine e.wav and i.wav), er.wav (pronounced /ər/, combine e.wav and r-.wav from the consonant folder), ew.wav (pronounced /ɛw/, combine ax.wav and u.wav), oi.wav (pronounced /ɔɪ/, combine o.wav and i.wav), ou.wav (pronounced /ɔɪ/, combine o.wav and i.wav).
+In the "vowels" folder, 5 are the Japanese vowels: a.wav, i.wav, u.wav, e.wav, o.wav. The remaining ones are: ai.wav (pronounced /aɪ/, combine a.wav and i.wav), ax.wav (pronounced /ə/, obtained by adjusting the formants of o.wav using the plugin), ei.wav (pronounced /eɪ/, combine e.wav and i.wav), er.wav (pronounced /ər/, combine e.wav and r-.wav from the consonant folder), ew.wav (pronounced /ɛw/, combine ax.wav and u.wav), oi.wav (pronounced /ɔɪ/, combine o.wav and i.wav), ou.wav (pronounced /oʊ/, combine o.wav and u.wav).
 
 After completing the above, run "autoeng.py". After the process finishes, please copy and paste all the consonants from the "ALSO COPY THESE TO YOUR OUTPUT LIBRARY" folder into your output folder. They are necessary, separate phonemes that participate together in oto.ini creation and English synthesis.
 
